@@ -1,0 +1,433 @@
+const noop = require('../noop');
+const some = require('../some');
+const extend = require('../extend');
+const merge = require('../merge');
+const reduce = require('../reduce');
+const isCollection = require('../isCollection');
+const isObjectLike = require('../isObjectLike');
+const isPromise = require('../isPromise');
+const isEmitter = require('../isEmitter');
+const isFunction = require('../isFunction');
+const addOf = require('../addOf');
+const removeOf = require('../removeOf');
+const forEach = require('../forEach');
+const forIn = require('../forIn');
+const map = require('../map');
+const each = require('../each');
+const defer = require('../defer');
+const bind = require('../bind');
+const cancelableThen = require('../cancelableThen');
+const iterateeNormalize = require('../iterateeNormalize');
+const aggregateSubscriptions = require('../aggregateSubscriptions');
+const set = require('../set');
+const get = require('../get');
+const getter = get.getter;
+const setBase = set.base;
+const getBase = get.base;
+
+const EMITTER_COMBINE_DEFAULT_DEPTH = 10;
+
+function emitNoop() {
+  // eslint-disable-next-line
+  console.warn('Emitter warning: this emitter is child, this method "emit" does not work.');
+}
+function iterateeWarning(instance, key) {
+  instance === undefined
+    && console.warn('Emitter warning: ' + key + ' is undefined');
+}
+
+function combine(emitters) {
+  if (!isCollection(emitters)) {
+    return new Emitter(emitters);
+  }
+  let ons = [], emits = {}, _subscription, _value; // eslint-disable-line
+  each(emitters, iterateeWarning);
+  extract([], emitters, EMITTER_COMBINE_DEFAULT_DEPTH);
+  function extract(path, src, depth) {
+    isEmitter(src) ? (
+      setBase(emits, path, src.emit),
+      ons.push([path, src.on])
+    ) : (
+      !isCollection(src)
+      || --depth < 1
+      || each(src, (v, k) => extract(path.concat([k]), v, depth))
+    );
+  }
+  function onDestroy() {
+    _subscription();
+    _subscription = 0;
+  }
+  function getValue() {
+    return combineGetValueBase(emitters, EMITTER_COMBINE_DEFAULT_DEPTH);
+  }
+  return new Emitter({
+    emit: (v) => combineEmitBase(emits, v, EMITTER_COMBINE_DEFAULT_DEPTH),
+    getValue: () => _subscription ? _value : getValue(),
+    on: (watcher) => {
+      function set() {
+        const next = triggered;
+        triggered = 0;
+        watcher(_value = next);
+      }
+      let triggered;
+      _subscription = aggregateSubscriptions(
+          map(ons, (args) => {
+            const path = args[0];
+            return args[1]((item) => {
+              item === getBase(triggered || _value, path) || (
+                triggered
+                  ? setBase(triggered, path, item)
+                  : (
+                    setBase(triggered = map(_value), path, item),
+                    defer(set)
+                  )
+              );
+            });
+          }),
+      );
+      _value = getValue();
+      return onDestroy;
+    },
+  });
+}
+function combineGetValueBase(src, depth) {
+  return isEmitter(src)
+    ? src.getValue()
+    : (
+      !isCollection(src) || depth-- < 1
+        ? src
+        : map(src, (v) => combineGetValueBase(v, depth))
+    );
+}
+function combineEmitBase(emit, src, depth) {
+  if (isFunction(emit)) return emit(src);
+  if (depth < 1) return;
+  depth--;
+  let k, e; //eslint-disable-line
+  for (k in src) (e = emit[k]) && combineEmitBase(e, src[k], depth); //eslint-disable-line
+}
+
+function initRootEmitter(self, _init, _value) {
+  const _watchers = [];
+  let _subscription;
+  self._cancel = noop;
+  self.on = on;
+  self.emit = emit;
+  self.getValue = getValue;
+
+  if (!isFunction(_init)) {
+    _value = _init;
+    _init = noop;
+  }
+  if (isPromise(_value)) {
+    let promise = _value;
+    _value = undefined;
+    emit(promise);
+    promise = 0;
+  }
+
+  function __emit(value) {
+    _value === value
+      || (self._cancel(), forEach(_watchers, tryWithValue(_value = value)));
+  }
+  function emit(value) {
+    self._cancel = asyncable(value, __emit);
+  }
+  function getValue() {
+    return _value;
+  }
+  function onDestroy() {
+    _subscription();
+    _subscription = 0;
+  }
+  function on(watcher) {
+    _subscription
+      || (_subscription = _init.call(self, emit, getValue) || noop);
+    return subscribe(_watchers, watcher, onDestroy);
+  }
+}
+
+function Emitter(_init, _value) {
+  const self = this;
+  const on = _init && _init.on;
+  const getValue = _init && _init.getValue;
+  if (!(isFunction(on) && isFunction(getValue))) {
+    return initRootEmitter(self, _init, _value);
+  }
+  extend(self, _init);
+  const _watchers = [];
+  let _subscription;
+  function onEmit(value) {
+    forEach(_watchers, tryWithValue(_value = value));
+  }
+  function onDestroy() {
+    _subscription();
+    _subscription = 0;
+  }
+  self.getValue = () => _subscription ? _value : getValue();
+  self.on = (watcher) => {
+    const subscription = subscribe(_watchers, watcher, onDestroy);
+    _subscription || (_subscription = on(onEmit), _value = getValue());
+    return subscription;
+  };
+}
+
+combine.some = (emitters, _value) => {
+  emitters = map(emitters, 'on');
+  return new Emitter({
+    getValue: () => _value,
+    on: (watcher) => aggregateSubscriptions(map(emitters, (on) => on((v) => {
+      watcher(_value = v);
+    }))),
+  });
+};
+Emitter.wrap = (attachEvent) => {
+  if (!isFunction(attachEvent)) {
+    throw new Error('The argument can only be a function');
+  }
+  return function() {
+    const self = this, args = [].slice.call(arguments); // eslint-disable-line
+    return new Emitter((emit) => {
+      args.push(emit);
+      // eslint-disable-next-line
+      return attachEvent.apply(null, args);
+    });
+  };
+};
+Emitter.combine = combine;
+Emitter.some = (values) => combine(values).map(some);
+Emitter.provider = (init, value) => new Emitter(init, value);
+Emitter.isEmitter = isEmitter;
+Emitter.prototype = {
+  _cancel: noop,
+  emit: emitNoop,
+  on: () => noop,
+  getValue: noop,
+  /*
+    Добавление экземпляру эмиттера методов.
+    @example:
+    const emitter = emitterProvider(0);
+
+    // добавление методов
+    emitter.behave({
+      enable: (emit) => emit(1),
+      disable: (emit) => emit(0),
+      toggle: (emit, _, getState) => emit(!getState()),
+    });
+
+    // использование методов
+    emitter.enable();
+    emitter.disable();
+    emitter.toggle(); // переключение тумблера
+
+
+    @example:
+    const emitter = emitterProvider(0);
+    // добавление методов
+    emitter.behave({
+      select: (emit, id) => emit(id),
+      clear: (emit) => emit(0),
+      toggle: (emit, id, getState) => emit(getState() === id ? 0 : id),
+    });
+
+    // использование методов
+    emitter.select(10); // выбрали пункт меню с id 10
+    emitter.clear(); // очистка
+    emitter.toggle(10); // если этот элемент был выбран, то очистка,
+      если элемент не был выбран, то он выбирается.
+
+    @example:
+    const emitter = emitterProvider(0);
+    const enableBehavior = {
+      enable: (emit) => emit(1),
+      disable: (emit) => emit(0),
+    };
+    const toggleBehavior = {
+      toggle: (emit, _, getState) => emit(!getState()),
+    };
+
+    // добавление методов
+    emitter.behave([ enableBehavior, toggleBehavior ]);
+
+    // использование методов
+    emitter.enable();
+    emitter.disable();
+    emitter.toggle();
+  */
+
+  behave(methods) {
+    const self = this;
+    const {
+      getValue,
+      emit,
+    } = self;
+    forIn(merge(methods), (method, methodName) => {
+      self[methodName] = (value) => method(emit, value, getValue);
+    });
+    methods = 0;
+    return self;
+  },
+
+  pipe() {
+    return reduce(arguments, (emitter, pipe) => pipe(emitter), this); // eslint-disable-line
+  },
+  fork(extended, value) {
+    return new Emitter(extend(extend({}, this), extended), value);
+  },
+
+  /*
+   Аналог setState в React, только для эмиттера и выполняет обновление состояния
+    немедленно.
+   Поверхностно объединяет переданное значение с внутренним значением состояния.
+  */
+  set(updatedState) {
+    this.emit(
+      isObjectLike(updatedState)
+        ? extend(extend({}, this.getValue()), updatedState)
+        : updatedState,
+    );
+  },
+
+  // операция сложения числа к текущему значению в эмиттере
+  calc(v) {
+    this.emit(this.getValue() + v);
+  },
+
+  map(mapOut, mapIn, _value) {
+    mapOut = getter(mapOut);
+    mapIn = getter(mapIn);
+    const self = this;
+    const {
+      emit,
+      on,
+      getValue,
+    } = self;
+    let _subscripion; // eslint-disable-line
+    const getValueOut = mapOut ? (() => {
+      _subscripion || asyncable(mapOut(getValue()), updateGetValue);
+      return _value;
+    }) : getValue;
+    const emitter = self.fork({
+      emit: mapIn ? (isFunction(mapIn) ? (value) => {
+        emitter._cancel();
+        emitter._cancel = asyncable(value, __emit);
+      } : emit) : emitNoop,
+      getValue: getValueOut,
+      on: mapOut ? ((watcher) => {
+        function update(value) {
+          _value === value || watcher(_value = value);
+        }
+        function handle(value) {
+          cancelOut();
+          cancelOut = asyncable(mapOut(value), update);
+        }
+        let cancelOut = noop;
+        handle(getValue());
+        _subscripion = on(handle);
+        return () => {
+          _subscripion && (watcher = 0, _subscripion(), _subscripion = 0);
+        };
+      }) : on,
+    }, _value);
+    function updateGetValue(value) {
+      _value = value;
+    }
+    function __emit(value) {
+      emit(mapIn(value, getValue));
+    }
+    return emitter;
+  },
+
+  prop(path, defaultValue) {
+    path = path.split('.');
+    let cache;
+    return this.map(
+        (v) => (cache = v) && getBase(v, path),
+        (v) => setBase(extend({}, cache), path, v),
+        defaultValue,
+    );
+  },
+
+  filter(check) {
+    check = iterateeNormalize(check);
+    const {
+      on,
+    } = this;
+    return this.fork({
+      on: (watcher) => on((value) => {
+        check(value) && watcher(value);
+      }),
+    });
+  },
+
+  is(standart) {
+    return this.map((v) => v === standart, (v) => v ? standart : null);
+  },
+
+  reDelay: mapWithOptionsProvider(require('../withReDelay')),
+  delay: mapWithOptionsProvider(require('../withDelay')),
+  throttle: mapWithOptionsProvider(require('../throttle')),
+
+  bind() {
+    // eslint-disable-next-line
+    return bind(this.emit, this, arguments);
+  },
+  bindFn(fnName) {
+    // eslint-disable-next-line
+    return bind(this[fnName], this, slice(arguments, 1));
+  },
+};
+
+function mapWithOptionsProvider(wrapper) {
+  return function() {
+    const self = this;
+    const __args = arguments; // eslint-disable-line
+    const {
+      on,
+      getValue,
+    } = self;
+    let _value = getValue();
+    return self.fork({
+      on: (watcher) => {
+        const args = [watcher];
+        args.push.apply(args, __args); // eslint-disable-line
+
+        _value = getValue();
+        // eslint-disable-next-line
+        const wrappedWatcher = wrapper.apply(null, args);
+
+        return on((value) => {
+          wrappedWatcher(_value = value);
+        });
+      },
+      getValue: () => _value,
+    });
+  };
+}
+
+function asyncable(v, emit, hasAsync) {
+  return isPromise(v)
+    ? cancelableThen(v, emit)
+    : (hasAsync ? defer(emit, [v]) : (emit(v), noop));
+}
+function subscribe(watchers, watcher, onDestroy) {
+  addOf(watchers, watcher);
+  return () => {
+    watcher && (
+      removeOf(watchers, watcher),
+      watchers.length < 1 && onDestroy(),
+      onDestroy = watchers = watcher = 0
+    );
+  };
+}
+function tryWithValue(value) {
+  return (watcher) => {
+    try {
+      watcher(value);
+    } catch (ex) {
+      console.error(ex);
+    }
+  };
+}
+
+module.exports = Emitter;
