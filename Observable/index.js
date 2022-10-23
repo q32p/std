@@ -1,17 +1,15 @@
 const noop = require('../noop');
 const some = require('../some');
 const extend = require('../extend');
-const merge = require('../merge');
 const reduce = require('../reduce');
 const isCollection = require('../isCollection');
 const isObjectLike = require('../isObjectLike');
 const isPromise = require('../isPromise');
-const isEmitter = require('../isEmitter');
+const isObservable = require('../isObservable');
 const isFunction = require('../isFunction');
 const addOf = require('../addOf');
 const removeOf = require('../removeOf');
 const forEach = require('../forEach');
-const forIn = require('../forIn');
 const map = require('../map');
 const each = require('../each');
 const defer = require('../defer');
@@ -25,26 +23,26 @@ const getter = get.getter;
 const setBase = set.base;
 const getBase = get.base;
 
-const EMITTER_COMBINE_DEFAULT_DEPTH = 10;
+const OBSERVABLE_COMBINE_DEFAULT_DEPTH = 10;
 
 function emitNoop() {
   // eslint-disable-next-line
-  console.warn('Emitter warning: this emitter is child, this method "emit" does not work.');
+  console.warn('Observable warning: this observable is child, this method "emit" does not work.');
 }
 function iterateeWarning(instance, key) {
   instance === undefined
-    && console.warn('Emitter warning: ' + key + ' is undefined');
+    && console.warn('Observable warning: ' + key + ' is undefined');
 }
 
-function combine(emitters) {
-  if (!isCollection(emitters)) {
-    return new Emitter(emitters);
+function combine(observables, sync) {
+  if (!isCollection(observables)) {
+    return new Observable(observables);
   }
   let ons = [], emits = {}, _subscription, _value; // eslint-disable-line
-  each(emitters, iterateeWarning);
-  extract([], emitters, EMITTER_COMBINE_DEFAULT_DEPTH);
+  each(observables, iterateeWarning);
+  extract([], observables, OBSERVABLE_COMBINE_DEFAULT_DEPTH);
   function extract(path, src, depth) {
-    isEmitter(src) ? (
+    isObservable(src) ? (
       setBase(emits, path, src.emit),
       ons.push([path, src.on])
     ) : (
@@ -58,40 +56,57 @@ function combine(emitters) {
     _subscription = 0;
   }
   function getValue() {
-    return combineGetValueBase(emitters, EMITTER_COMBINE_DEFAULT_DEPTH);
+    return combineGetValueBase(observables, OBSERVABLE_COMBINE_DEFAULT_DEPTH);
   }
-  return new Emitter({
-    emit: (v) => combineEmitBase(emits, v, EMITTER_COMBINE_DEFAULT_DEPTH),
+  return new Observable({
+    emit: (v) => combineEmitBase(emits, v, OBSERVABLE_COMBINE_DEFAULT_DEPTH),
     getValue: () => _subscription ? _value : getValue(),
-    on: (watcher) => {
-      function set() {
-        const next = triggered;
-        triggered = 0;
-        watcher(_value = next);
-      }
-      let triggered;
-      _subscription = aggregateSubscriptions(
-          map(ons, (args) => {
-            const path = args[0];
-            return args[1]((item) => {
-              item === getBase(triggered || _value, path) || (
-                triggered
-                  ? setBase(triggered, path, item)
-                  : (
-                    setBase(triggered = map(_value), path, item),
-                    defer(set)
-                  )
-              );
-            });
-          }),
-      );
-      _value = getValue();
-      return onDestroy;
-    },
+    on: sync
+      ? ((watcher) => {
+        _subscription = aggregateSubscriptions(
+            map(ons, (args) => {
+              const path = args[0];
+              return args[1]((item) => {
+                item === getBase(_value, path)
+                  || watcher(setBase(_value = map(_value), path, item));
+              });
+            }),
+        );
+        _value = getValue();
+        return onDestroy;
+      })
+      : ((watcher) => {
+        function set() {
+          const next = triggered;
+          triggered = 0;
+          watcher(_value = next);
+        }
+        let triggered;
+        _subscription = aggregateSubscriptions(
+            map(ons, (args) => {
+              const path = args[0];
+              return args[1]((item) => {
+                item === getBase(triggered || _value, path) || (
+                  triggered
+                    ? setBase(triggered, path, item)
+                    : (
+                      setBase(triggered = map(_value), path, item),
+                      defer(set)
+                    )
+                );
+              });
+            }),
+        );
+        _value = getValue();
+        return onDestroy;
+      }),
   });
 }
+function combineSync(observables) {
+  return combine(observables, true);
+}
 function combineGetValueBase(src, depth) {
-  return isEmitter(src)
+  return isObservable(src)
     ? src.getValue()
     : (
       !isCollection(src) || depth-- < 1
@@ -107,7 +122,7 @@ function combineEmitBase(emit, src, depth) {
   for (k in src) (e = emit[k]) && combineEmitBase(e, src[k], depth); //eslint-disable-line
 }
 
-function initRootEmitter(self, _init, _value) {
+function initRootObservable(self, _init, _value) {
   const _watchers = [];
   let _subscription;
   self._cancel = noop;
@@ -147,12 +162,12 @@ function initRootEmitter(self, _init, _value) {
   }
 }
 
-function Emitter(_init, _value) {
+function Observable(_init, _value) {
   const self = this;
   const on = _init && _init.on;
   const getValue = _init && _init.getValue;
   if (!(isFunction(on) && isFunction(getValue))) {
-    return initRootEmitter(self, _init, _value);
+    return initRootObservable(self, _init, _value);
   }
   extend(self, _init);
   const _watchers = [];
@@ -172,107 +187,44 @@ function Emitter(_init, _value) {
   };
 }
 
-combine.some = (emitters, _value) => {
-  emitters = map(emitters, 'on');
-  return new Emitter({
+combine.some = (observables, _value) => {
+  observables = map(observables, 'on');
+  return new Observable({
     getValue: () => _value,
-    on: (watcher) => aggregateSubscriptions(map(emitters, (on) => on((v) => {
+    on: (watcher) => aggregateSubscriptions(map(observables, (on) => on((v) => {
       watcher(_value = v);
     }))),
   });
 };
-Emitter.wrap = (attachEvent) => {
+Observable.wrap = (attachEvent) => {
   if (!isFunction(attachEvent)) {
     throw new Error('The argument can only be a function');
   }
   return function() {
     const self = this, args = [].slice.call(arguments); // eslint-disable-line
-    return new Emitter((emit) => {
+    return new Observable((emit) => {
       args.push(emit);
       // eslint-disable-next-line
       return attachEvent.apply(null, args);
     });
   };
 };
-Emitter.combine = combine;
-Emitter.some = (values) => combine(values).map(some);
-Emitter.provider = (init, value) => new Emitter(init, value);
-Emitter.isEmitter = isEmitter;
-Emitter.prototype = {
+Observable.combine = combine;
+Observable.combineSync = combineSync;
+Observable.some = (values) => combine(values).map(some);
+Observable.someSync = (values) => combineSync(values).map(some);
+Observable.provider = (init, value) => new Observable(init, value);
+Observable.isObservable = isObservable;
+Observable.prototype = {
   _cancel: noop,
   emit: emitNoop,
   on: () => noop,
   getValue: noop,
-  /*
-    Добавление экземпляру эмиттера методов.
-    @example:
-    const emitter = emitterProvider(0);
-
-    // добавление методов
-    emitter.behave({
-      enable: (emit) => emit(1),
-      disable: (emit) => emit(0),
-      toggle: (emit, _, getState) => emit(!getState()),
-    });
-
-    // использование методов
-    emitter.enable();
-    emitter.disable();
-    emitter.toggle(); // переключение тумблера
-
-
-    @example:
-    const emitter = emitterProvider(0);
-    // добавление методов
-    emitter.behave({
-      select: (emit, id) => emit(id),
-      clear: (emit) => emit(0),
-      toggle: (emit, id, getState) => emit(getState() === id ? 0 : id),
-    });
-
-    // использование методов
-    emitter.select(10); // выбрали пункт меню с id 10
-    emitter.clear(); // очистка
-    emitter.toggle(10); // если этот элемент был выбран, то очистка,
-      если элемент не был выбран, то он выбирается.
-
-    @example:
-    const emitter = emitterProvider(0);
-    const enableBehavior = {
-      enable: (emit) => emit(1),
-      disable: (emit) => emit(0),
-    };
-    const toggleBehavior = {
-      toggle: (emit, _, getState) => emit(!getState()),
-    };
-
-    // добавление методов
-    emitter.behave([ enableBehavior, toggleBehavior ]);
-
-    // использование методов
-    emitter.enable();
-    emitter.disable();
-    emitter.toggle();
-  */
-
-  behave(methods) {
-    const self = this;
-    const {
-      getValue,
-      emit,
-    } = self;
-    forIn(merge(methods), (method, methodName) => {
-      self[methodName] = (value) => method(emit, value, getValue);
-    });
-    methods = 0;
-    return self;
-  },
-
   pipe() {
-    return reduce(arguments, (emitter, pipe) => pipe(emitter), this); // eslint-disable-line
+    return reduce(arguments, (observable, pipe) => pipe(observable), this); // eslint-disable-line
   },
   fork(extended, value) {
-    return new Emitter(extend(extend({}, this), extended), value);
+    return new Observable(extend(extend({}, this), extended), value);
   },
 
   /*
@@ -280,7 +232,7 @@ Emitter.prototype = {
     немедленно.
    Поверхностно объединяет переданное значение с внутренним значением состояния.
   */
-  set(updatedState) {
+  extend(updatedState) {
     this.emit(
       isObjectLike(updatedState)
         ? extend(extend({}, this.getValue()), updatedState)
@@ -307,10 +259,10 @@ Emitter.prototype = {
       _subscripion || asyncable(mapOut(getValue()), updateGetValue);
       return _value;
     }) : getValue;
-    const emitter = self.fork({
+    const observable = self.fork({
       emit: mapIn ? (isFunction(mapIn) ? (value) => {
-        emitter._cancel();
-        emitter._cancel = asyncable(value, __emit);
+        observable._cancel();
+        observable._cancel = asyncable(value, __emit);
       } : emit) : emitNoop,
       getValue: getValueOut,
       on: mapOut ? ((watcher) => {
@@ -335,7 +287,7 @@ Emitter.prototype = {
     function __emit(value) {
       emit(mapIn(value, getValue));
     }
-    return emitter;
+    return observable;
   },
 
   prop(path, defaultValue) {
@@ -430,4 +382,4 @@ function tryWithValue(value) {
   };
 }
 
-module.exports = Emitter;
+module.exports = Observable;

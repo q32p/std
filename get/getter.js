@@ -8,9 +8,9 @@ function arrayHandleProvider(path) {
   return (v) => base(v, path);
 }
 
-module.exports = (v) => {
-  const type = typeof v;
+module.exports = (v, type) => {
   return isDefined(v) ? (
+    type = typeof v,
     type === 'string'
       ? arrayHandleProvider(v.split('.'))
       : type === 'number'
