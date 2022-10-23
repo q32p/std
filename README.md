@@ -1,6 +1,2 @@
-# mn-utils
+# std
 
-Lodash like utils
-
-
-A custom lightweight set of helper functions. 
