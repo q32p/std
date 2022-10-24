@@ -1,5 +1,8 @@
-const combine = require('../Emitter/combine');
+const {
+  combine,
+} = require('../Observable');
 const childClassOfReact = require('../childClassOfReact');
+
 
 module.exports = (env) => {
   return childClassOfReact(env.Component, (self, props) => {

@@ -3,7 +3,7 @@ const isFunction = require('../isFunction');
 const isDefined = require('../isDefined');
 const isPromise = require('../isPromise');
 const isEqual = require('../isEqual');
-const Emitter = require('../Emitter');
+const Observable = require('../Observable');
 
 module.exports = (storage, prefix) => {
   storage || (storage = {});
@@ -29,7 +29,7 @@ module.exports = (storage, prefix) => {
     function normalize(v) {
       return isDefined(v) ? v : defaultValue;
     }
-    const emitter = new Emitter((emit, getValue) => {
+    const emitter = new Observable((emit, getValue) => {
       emit(getInitialValue());
       init(emitAsync, getValue);
     }, getInitialValue());

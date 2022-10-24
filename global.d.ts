@@ -212,25 +212,25 @@ export interface IEmit {
   ((value: any) => void): any;
 }
 
-export type EmitterWatcher<T> = <T>(value: T) => any;
-export type EmitterExecutor<T> = (
+export type ObservableWatcher<T> = <T>(value: T) => any;
+export type ObservableExecutor<T> = (
   emit?: IEmit;
   getValue?: () => any;
-  on?: ((watcher: EmitterWatcher<T>) => cancel);
+  on?: ((watcher: ObservableWatcher<T>) => cancel);
 ) => cancel | any;
 
-export declare class Emitter<T> {
+export declare class Observable<T> {
   public constructor(defaultValue?: T);
-  public constructor(executor?: EmitterExecutor<T> | Emitter<T> | IThenable<T>, defaultValue?: T);
+  public constructor(executor?: ObservableExecutor<T> | Observable<T> | IThenable<T>, defaultValue?: T);
 
-  public on(watcher: EmitterWatcher<T>): cancel;
+  public on(watcher: ObservableWatcher<T>): cancel;
   public emit(value: T | IThenable<T>): void;
   public getValue(): T;
 
-  public static provider<A>(defaultValue?: A): Emitter<A>;
-  public static provider<A>(executor?: EmitterExecutor<A> | Emitter<A> | IThenable<A>, defaultValue?: A): Emitter<A>;
-  public static wrap<A, B>(fn: (...args: A, cb: (value: B) => any) => cancel): ((...args: A) => Emitter<B>);
-  public static combine(values: (Emitter<any> | any)[] | {[name: string]: Emitter<any> | any}): Emitter<any>;
-  public static some(values: (Emitter<any> | any)[]): Emitter<any>;
-  public static isEmitter(value: any): boolean;
+  public static provider<A>(defaultValue?: A): Observable<A>;
+  public static provider<A>(executor?: ObservableExecutor<A> | Observable<A> | IThenable<A>, defaultValue?: A): Observable<A>;
+  public static wrap<A, B>(fn: (...args: A, cb: (value: B) => any) => cancel): ((...args: A) => Observable<B>);
+  public static combine(values: (Observable<any> | any)[] | {[name: string]: Observable<any> | any}): Observable<any>;
+  public static some(values: (Observable<any> | any)[]): Observable<any>;
+  public static isObservable(value: any): boolean;
 }

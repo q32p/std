@@ -15,7 +15,7 @@ const without = require('../without');
 const routeParseProvider = require('../routeParseProvider');
 const isMatch = require('../isMatch');
 const childClassOfReact = require('../childClassOfReact');
-const Emitter = require('../Emitter');
+const Observable = require('../Observable');
 
 const WITHOUT_FIELDS_LINK = [
   'onClick', 'options', 'component', 'timeout', 'href',
@@ -39,7 +39,7 @@ function getPath(v) {
 function getChild(v) {
   return v.child || {};
 }
-function routerForEmitterMapProvider(routes, notFoundHandler) {
+function routerForObservableMapProvider(routes, notFoundHandler) {
   routes = map(routes, ([route, render]) => {
     return [routeParseProvider(route), render];
   });
@@ -59,7 +59,7 @@ function routerForEmitterMapProvider(routes, notFoundHandler) {
 }
 function routerByLocationProviderProvider(location$) {
   return function routerByLocationProvider(routes, notFoundHandler) {
-    return location$.map(routerForEmitterMapProvider(routes, notFoundHandler));
+    return location$.map(routerForObservableMapProvider(routes, notFoundHandler));
   };
 }
 function routerProvider({
@@ -75,7 +75,7 @@ function routerProvider({
     location,
     history,
   } = window;
-  const location$ = new Emitter(_globalLocation = parseLocation());
+  const location$ = new Observable(_globalLocation = parseLocation());
   const {
     emit: emitLocation,
   } = location$;
@@ -219,7 +219,7 @@ function routerProvider({
 
   function paramStorageProvider(location$, pushLocation) {
     const query$ = location$.map('query');
-    const instance = new Emitter({});
+    const instance = new Observable({});
     const emit = instance.emit;
     let state = query$.getValue() || {};
 
@@ -275,7 +275,7 @@ function routerProvider({
     hashLocation$,
     hashPath$,
     LinkProvider,
-    routerForEmitterMapProvider,
+    routerForObservableMapProvider,
     paramStorageProvider,
     routerByLocationProvider: routerByLocationProviderProvider(location$),
     routerByHashLocationProvider:
@@ -299,7 +299,7 @@ function routerProvider({
 };
 
 routerProvider.mergeLocation = mergeLocation;
-routerProvider.routerForEmitterMapProvider = routerForEmitterMapProvider;
+routerProvider.routerForObservableMapProvider = routerForObservableMapProvider;
 routerProvider.routerByLocationProviderProvider
   = routerByLocationProviderProvider;
 

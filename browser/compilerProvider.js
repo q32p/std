@@ -1,4 +1,6 @@
-const combine = require('../Emitter/combine');
+const {
+  combine,
+} = require('../Observable');
 const extend = require('../extend');
 const isObjectLike = require('../isObjectLike');
 const isArray = require('../isArray');

@@ -20,7 +20,7 @@ const AnyComponent = withState({
 const childClassOfReact = require('../childClassOfReact');
 const {
   combine,
-} = require('../Emitter');
+} = require('../Observable');
 const eachTry = require('../eachTry');
 const forEach = require('../forEach');
 const noop = require('../noop');

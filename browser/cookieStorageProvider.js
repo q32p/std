@@ -4,7 +4,7 @@
  *
  */
 
-const Emitter = require('../Emitter');
+const Observable = require('../Observable');
 const tryJsonParse = require('../tryJsonParse');
 const jsonStringify = require('../jsonStringify');
 const keys = require('../keys');
@@ -24,7 +24,7 @@ function storageInit(cookie) {
 }
 
 module.exports = (ctx) => {
-  const instance = new Emitter();
+  const instance = new Observable();
   const emit = instance.emit;
   const doc = ctx.document;
   const cache = storageInit(doc.cookie);

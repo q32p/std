@@ -1,6 +1,6 @@
 const rpcIframeClient = require('mn-utils/rpc/iframe/client');
 const CancelablePromise = require('mn-utils/CancelablePromise');
-const Emitter = require('mn-utils/Emitter');
+const Observable = require('mn-utils/Observable');
 
 function insertWidget(node, url, options) {
   return new CancelablePromise((resolve) => {
@@ -29,7 +29,7 @@ function insertWidget(node, url, options) {
 }
 
 
-const emitter = new Emitter(32);
+const emitter = new Observable(32);
 
 setTimeout(() => {
   emitter.emit(780);

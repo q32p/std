@@ -10,7 +10,9 @@
 
 const without = require('../without');
 const childClassOfReact = require('../childClassOfReact');
-const combine = require('../Emitter/combine');
+const {
+  combine,
+} = require('../Observable');
 const getViewportSize = require('./getViewportSize');
 
 const withoutProps = ['component', 'ref', 'render', 'state'];

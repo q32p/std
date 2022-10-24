@@ -1,4 +1,4 @@
-const Emitter = require('mn-utils/Emitter');
+const Observable = require('mn-utils/Observable');
 const __values = require('mn-utils/values');
 const extend = require('mn-utils/extend');
 
@@ -10,7 +10,7 @@ function iterateeMap(cssMap) {
 }
 
 module.exports = function(StylesContext, noRoot) {
-  const cssMap$ = new Emitter({});
+  const cssMap$ = new Observable({});
   const {emit, getValue} = cssMap$;
   const Renderer = StylesContext._currentValue.jss.options.Renderer;
   const proto = Renderer.prototype;

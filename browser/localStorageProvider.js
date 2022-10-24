@@ -1,12 +1,12 @@
 const forEach = require('../forEach');
-const Emitter = require('../Emitter');
+const Observable = require('../Observable');
 const tryJsonParse = require('../tryJsonParse');
 const jsonStringify = require('../jsonStringify');
 const attachEvent = require('../attachEvent');
 
 module.exports = (win) => {
   let locked;
-  const instance = new Emitter();
+  const instance = new Observable();
   const emit = instance.emit;
   const originLocalStorage = win.localStorage;
   function __set(key, value) {

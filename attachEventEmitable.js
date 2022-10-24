@@ -3,4 +3,4 @@
  * @author Amir Absalyamov <mr.amirka@ya.ru>
  */
 
-module.exports = require('./Emitter').wrap(require('./attachEvent'));
+module.exports = require('./Observable').wrap(require('./attachEvent'));

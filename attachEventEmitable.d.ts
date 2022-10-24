@@ -4,7 +4,7 @@
  */
 
  import {
-   Emitter,
+   Observable,
  } from "./global";
 
 /**
@@ -19,5 +19,5 @@
  * });
  * ```
  */
- declare function attachEventEmitable(node: EventTarget, eventName: string, options?: any): Emitter<Event>;
+ declare function attachEventEmitable(node: EventTarget, eventName: string, options?: any): Observable<Event>;
  export = attachEventEmitable;

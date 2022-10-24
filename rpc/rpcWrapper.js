@@ -1,9 +1,9 @@
 const CancelablePromise = require('../CancelablePromise');
-const Emitter = require('../Emitter');
+const Observable = require('../Observable');
 const slice = require('../slice');
 const isArray = require('../isArray');
 const isPromise = require('../isPromise');
-const isEmitter = require('../isEmitter');
+const isObservable = require('../isObservable');
 const isDate = require('../isDate');
 const isRegExp = require('../isRegExp');
 const regexpParse = require('../regexpParse');
@@ -156,7 +156,7 @@ function rpcProvider(env, init, emit, on) {
 
   return invokeBase(getUniqId(), [INIT_FN_NAME, [env]]);
 }
-function adaptEmitter(input$) {
+function adaptObservable(input$) {
   const {
     on,
   } = input$;
@@ -184,7 +184,7 @@ function rpcEncode(src, scope, name) {
           + (property ? ' in property "' + prefix + name + '"': ''));
       }
       excludes = concat(excludes, [src]);
-      if (isEmitter(src)) src = adaptEmitter(src);
+      if (isObservable(src)) src = adaptObservable(src);
       prefix += name + '.';
       scope = scope[name] = {};
       let k, dst, length; // eslint-disable-line
@@ -234,7 +234,7 @@ function rpcEncode(src, scope, name) {
       }
       return output;
     }
-    isEmitter(src) && (src = adaptEmitter(src));
+    isObservable(src) && (src = adaptObservable(src));
     for (k in src) { // eslint-disable-line
       output[k] = base(src[k], k, prefix, excludes);
     }
@@ -257,8 +257,8 @@ function rpcDecode(value, getFn) {
 
     value = map(value, unpack);
 
-    if (isEmitter(value)) {
-      const emitter$ = new Emitter();
+    if (isObservable(value)) {
+      const emitter$ = new Observable();
       const {
         emit,
       } = emitter$;
