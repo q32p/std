@@ -288,11 +288,11 @@ module.exports = function(ctx) {
       return clear;
     });
   };
-  CancelablePromise.delay = (fn, _delay, subject, self) => {
+  CancelablePromise.delay = (_delay, fn, subject, self) => {
     return new CancelablePromise((resolve) => {
       return isFunction(fn) ? delay(() => {
         resolve(fn.call(self, subject));
-      }, _delay) : delay(resolve, _delay, [fn], self);
+      }, _delay) : delay(resolve, _delay, [fn]);
     });
   };
   CancelablePromise.provide = (executor) => {

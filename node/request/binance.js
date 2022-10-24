@@ -75,14 +75,17 @@ module.exports = (options) => {
 
     let numberOfRetries = 0;
 
+    console.log(formatTime(), 'request', id, method, path, _params);
+
     return _promises[taskIndex] = _promises[taskIndex]
-        .then(base)
-        .catch(onError);
+        .catch(onError)
+        .then(base);
 
     function base() {
       const time = getTime();
       if (_lockedTime > time) {
-        return cancelablePromiseDelay(_lockedTime - time).then(base);
+        return cancelablePromiseDelay(_lockedTime - time)
+            .then(base);
       }
 
       const params = extend({}, _params);
@@ -129,8 +132,6 @@ module.exports = (options) => {
         const retryAfter = headers['x-retry-after'] || headers['retry-after'];
         const timeToWait = intval(retryAfter, retryTimeout, 0) * 1000;
 
-        _lockedTime = getTime() + timeToWait;
-
         if (
           retry && (
             statusCode === 503
@@ -138,6 +139,7 @@ module.exports = (options) => {
             || statusCode === 418
           )
         ) {
+          _lockedTime = getTime() + timeToWait;
           numberOfRetries++;
           if (numberOfRetries > retryLimit) {
             throwError({
@@ -174,7 +176,7 @@ module.exports = (options) => {
             }, `Request on ${method} ${url} returned error code: ${
               statusCode}`);
           }
-          throw error;
+          throwError(error);
         });
       }));
     }
