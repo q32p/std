@@ -135,21 +135,22 @@ describe('CancelablePromise', () => {
   });
 
   test('it should execute "finally" callback if resolved promise', async () => {
-    const cancelablePromise = new CancelablePromise((resolve) => {
-      resolve('Hello world!');
+    const promise = new Promise((topResolve, topReject) => {
+      const cancelablePromise = new CancelablePromise((resolve) => {
+        resolve('Hello world!');
+      });
+      cancelablePromise
+          .then((v) => {
+            return v + '!';
+          })
+          .then((v) => {
+            return v + '!';
+          })
+          .finally((error, val, canceled) => {
+            topResolve([error, val, canceled]);
+          });
     });
-    const childCancelablePromise = cancelablePromise
-        .then((v) => {
-          return v + '!';
-        })
-        .then((v) => {
-          return v + '!';
-        })
-        .finally((error, val) => {
-          expect(val).toBe('Hello world!!!');
-          expect(error).toBe(null);
-        });
-    expect(await childCancelablePromise).toBe('Hello world!!!');
+    expect(await promise).toEqual([null, 'Hello world!!!', false]);
   });
 
   test('it should execute "finally" callback if rejected promise', async () => {
@@ -157,7 +158,7 @@ describe('CancelablePromise', () => {
       reject(new Error('2 Ooops!'));
     });
     const childCancelablePromise = cancelablePromise.finally((error, val) => {
-      expect(val).toBe(undefined);
+      expect(val).toBe(null);
       expect(error).toEqual(new Error('2 Ooops!'));
     });
     const childCancelablePromise2 = childCancelablePromise.catch((v) => v);
@@ -168,12 +169,12 @@ describe('CancelablePromise', () => {
     const promise = new Promise((topResolve, topReject) => {
       const cancelablePromise = new CancelablePromise((resolve) => {
         resolve('resolved');
-      }).finally((error, val) => {
-        topResolve([error, val, 'finally']);
+      }).finally((error, val, canceled) => {
+        topResolve([error, val, 'finally', canceled]);
       });
       cancelablePromise.cancel();
     });
-    expect(await promise).toEqual([null, undefined, 'finally']);
+    expect(await promise).toEqual([null, null, 'finally', true]);
   });
 
   /* eslint-disable-next-line */

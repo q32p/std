@@ -75,7 +75,7 @@ module.exports = (options) => {
 
     let numberOfRetries = 0;
 
-    console.log(formatTime(), 'request', id, method, path, _params);
+    // console.log(formatTime(), 'request', id, method, path, _params);
 
     return _promises[taskIndex] = _promises[taskIndex]
         .catch(onError)
@@ -143,7 +143,7 @@ module.exports = (options) => {
           numberOfRetries++;
           if (numberOfRetries > retryLimit) {
             throwError({
-              response: provider(response),
+              // response: provider(response),
             }, `${formatTime()} Request ${id} on ${method} ${url
             }. The retry limit has been exceeded`);
           }
@@ -172,7 +172,8 @@ module.exports = (options) => {
           if (statusCode >= 400 && statusCode <= 600) {
             throwError({
               code: statusCode,
-              response,
+              text: response._text,
+              // response,
             }, `Request on ${method} ${url} returned error code: ${
               statusCode}`);
           }

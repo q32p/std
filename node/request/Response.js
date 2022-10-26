@@ -24,11 +24,12 @@ function toJson(v) {
 Response.provider = (origin) => new Response(origin);
 Response.prototype = {
   text() {
-    const _promise = this._promise;
+    const self = this;
+    const _promise = self._promise;
     if (_promise) {
       return _promise;
     }
-    const response = this._origin;
+    const response = self._origin;
     const contentEncoding = response.headers['content-encoding'];
     const skipUnzip = UNZIP_CONTENT.indexOf(contentEncoding) === -1;
     const promise = new CancelablePromise((resolve, reject) => {
@@ -50,7 +51,7 @@ Response.prototype = {
           : response.destroy && response.destroy();
       };
     });
-    return this._promise = skipUnzip ? promise : promise.then((body) => {
+    return self._promise = (skipUnzip ? promise : promise.then((body) => {
       return new CancelablePromise((resolve, reject) => {
         (
           contentEncoding === 'deflate'
@@ -67,7 +68,8 @@ Response.prototype = {
           }
         });
       });
-    });
+    }))
+        .then((text) => self._text = text);
   },
   json() {
     return this.text().then(toJson);

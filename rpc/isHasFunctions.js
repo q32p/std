@@ -1,4 +1,5 @@
 const isArray = require('../isArray');
+const hasOwn = require('../hasOwn');
 
 function isHasFunctions(src) {
   if (src) {
@@ -11,7 +12,7 @@ function isHasFunctions(src) {
         }
       } else {
         for (k in src) {
-          if (isHasFunctions(src[k])) return 1;
+          if (hasOwn(src, k) && isHasFunctions(src[k])) return 1;
         }
       }
     }

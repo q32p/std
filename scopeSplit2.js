@@ -2,15 +2,13 @@
 scopeSplit('not(.disabled(.as).lak).checked', '(', ')');
 // =>
 [
-  'not',
-  [
-    '.disabled',
-    [
-      '.as',
-    ],
-    '.lak',
-  ],
-  '.checked',
+  ['not', [
+    ['.disabled', [
+      ['.as']
+    ]],
+    ['.lak']
+  ]],
+  ['.checked']
 ]
 */
 
@@ -18,26 +16,29 @@ const startsWith = require('./startsWith');
 const push = require('./push');
 
 
-module.exports = (input, startKey, endKey, escapeExp, ignoreCloseSyntax) => {
+module.exports = (input, startKey, endKey, escapeExp) => {
   escapeExp = escapeExp || '';
   startKey = startKey || '(';
   endKey = endKey || ')';
-  let startLevel = [], level = startLevel, levels = [level], startL = startKey.length, // eslint-disable-line
+  let level = [], levels = [level], startL = startKey.length, // eslint-disable-line
     endL = endKey.length, offset = 0, prevLevel, start, escapeL = escapeExp.length, // eslint-disable-line
     depth = 0, lastOffset = 0, length = input.length; // eslint-disable-line
   function is(token) {
     return startsWith(input, token, offset);
   }
   function pushFragment(_offset) {
-    push(level, input.substr(lastOffset, _offset - lastOffset));
-  }
-  function throwError() {
-    throw new Error('Scope syntax error: "' + input + '"');
+    push(level, [
+      input.substr(lastOffset, _offset - lastOffset),
+    ]);
   }
   function scopeClose() {
     --depth;
-    depth < 0 && throwError();
-    level = levels[depth];
+    if (depth < 0) {
+      throw new Error('Scope syntax error: "' + input + '"');
+    }
+    prevLevel = levels[depth];
+    prevLevel[prevLevel.length - 1][1] = level;
+    level = prevLevel;
   }
   while (offset < length) {
     if (escapeExp && is(escapeExp)) {
@@ -49,9 +50,7 @@ module.exports = (input, startKey, endKey, escapeExp, ignoreCloseSyntax) => {
       pushFragment(offset);
       if (start) {
         depth++;
-        prevLevel = level;
         level = levels[depth] = [];
-        push(prevLevel, level);
         offset += startL;
       } else {
         scopeClose();
@@ -60,11 +59,12 @@ module.exports = (input, startKey, endKey, escapeExp, ignoreCloseSyntax) => {
       lastOffset = offset;
       continue;
     }
+
     offset++;
   }
 
   lastOffset < length && pushFragment(length);
-  depth && !ignoreCloseSyntax && throwError();
+  while (depth > 0) scopeClose();
 
-  return startLevel;
+  return levels[0];
 };

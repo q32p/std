@@ -72,11 +72,11 @@ module.exports = function(ctx) {
     const promise = thenCall(
         chain,
         (subject) => {
-          executeTry(onFinally, [null, subject], null, onErrorFinally);
+          executeTry(onFinally, [null, subject, false], null, onErrorFinally);
           return subject;
         },
         (subject) => {
-          executeTry(onFinally, [subject], null, onErrorFinally);
+          executeTry(onFinally, [subject, null, false], null, onErrorFinally);
           throw subject;
         },
         () => {

@@ -1,6 +1,7 @@
 const noop = require('../noop');
 const some = require('../some');
 const extend = require('../extend');
+const extendOwn = require('../extendOwn');
 const reduce = require('../reduce');
 const isCollection = require('../isCollection');
 const isObjectLike = require('../isObjectLike');
@@ -125,7 +126,6 @@ function combineEmitBase(emit, src, depth) {
 function initRootObservable(self, _init, _value) {
   const _watchers = [];
   let _subscription;
-  self._cancel = noop;
   self.on = on;
   self.emit = emit;
   self.getValue = getValue;
@@ -169,7 +169,7 @@ function Observable(_init, _value) {
   if (!(isFunction(on) && isFunction(getValue))) {
     return initRootObservable(self, _init, _value);
   }
-  extend(self, _init);
+  extendOwn(self, _init);
   const _watchers = [];
   let _subscription;
   function onEmit(value) {
@@ -224,7 +224,7 @@ Observable.prototype = {
     return reduce(arguments, (observable, pipe) => pipe(observable), this); // eslint-disable-line
   },
   fork(extended, value) {
-    return new Observable(extend(extend({}, this), extended), value);
+    return new Observable(extend(extendOwn({}, this), extended), value);
   },
 
   /*

@@ -1,26 +1,39 @@
 const CancelablePromise = require('../../CancelablePromise');
-const {
-  rpcProvider,
-} = require('../rpcWrapper');
+const attachEvent = require('../../attachEvent');
+const noop = require('../../noop');
+const rpcProvider = require('../index');
+
 
 module.exports = (childWindow, env) => {
   let parent = childWindow.parent;
   return new CancelablePromise((resolve, reject) => {
+    let _cancel = noop;
     function terminate() {
-      parent = childWindow = env = null;
+      _cancel && (
+        _cancel(),
+        _cancel = parent = childWindow = env = 0
+      );
     }
-    resolve(rpcProvider(env || {}, null, (data) => {
-      childWindow && childWindow.postMessage(data, '*');
-    }, (emit) => {
-      parent && parent.addEventListener('message', (e) => {
-        emit(e.data);
-      }, false);
-    }).finally((err, response) => {
-      err && terminate();
-    }).then((exports) => ({
-      terminate,
-      exports,
-    })));
+    resolve(
+        rpcProvider({
+          env: env || {},
+          emit: (data) => {
+            childWindow && childWindow.postMessage(data, '*');
+          },
+          on: (emit) => {
+            parent && (_cancel = attachEvent(parent, 'message', (e) => {
+              emit(e.data);
+            }, false));
+          },
+        })
+            .finally((err, response) => {
+              err && terminate();
+            })
+            .then((exports) => ({
+              terminate,
+              exports,
+            })),
+    );
     return terminate;
   });
 };
