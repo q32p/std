@@ -292,10 +292,13 @@ Observable.prototype = {
 
   prop(path, defaultValue) {
     path = path.split('.');
-    let cache;
-    return this.map(
-        (v) => (cache = v) && getBase(v, path),
-        (v) => setBase(extend({}, cache), path, v),
+    const self = this;
+    const {
+      getValue,
+    } = self;
+    return self.map(
+        (v) => getBase(v, path),
+        (v) => setBase(extend({}, getValue()), path, v),
         defaultValue,
     );
   },
