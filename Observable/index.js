@@ -119,8 +119,8 @@ function combineEmitBase(emit, src, depth) {
   if (isFunction(emit)) return emit(src);
   if (depth < 1) return;
   depth--;
-  let k, e; //eslint-disable-line
-  for (k in src) (e = emit[k]) && combineEmitBase(e, src[k], depth); //eslint-disable-line
+  let k, e; // eslint-disable-line
+  for (k in src) (e = emit[k]) && combineEmitBase(e, src[k], depth); // eslint-disable-line
 }
 
 function initRootObservable(self, _init, _value) {
@@ -269,13 +269,13 @@ Observable.prototype = {
         function update(value) {
           _value === value || watcher(_value = value);
         }
-        function handle(value) {
+        let cancelOut = asyncable(mapOut(getValue()), (value) => {
+          _value = value;
+        });
+        _subscripion = on((value) => {
           cancelOut();
           cancelOut = asyncable(mapOut(value), update);
-        }
-        let cancelOut = noop;
-        handle(getValue());
-        _subscripion = on(handle);
+        });
         return () => {
           _subscripion && (watcher = 0, _subscripion(), _subscripion = 0);
         };
