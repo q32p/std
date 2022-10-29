@@ -157,7 +157,8 @@ function initRootObservable(self, _init, _value) {
   }
   function on(watcher) {
     _subscription
-      || (_subscription = _init.call(self, emit, getValue) || noop);
+      || isFunction(_subscription = _init.call(self, emit, getValue))
+      || (_subscription = noop);
     return subscribe(_watchers, watcher, onDestroy);
   }
 }
