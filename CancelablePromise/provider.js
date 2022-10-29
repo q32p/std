@@ -89,6 +89,9 @@ module.exports = function(ctx) {
   }
 
   function CancelablePromise(executor) {
+    if (executor && !isFunction(executor)) {
+      throw new Error('Executor param must be a function');
+    }
     const self = this;
     let pool = [];
     let args;
@@ -127,24 +130,16 @@ module.exports = function(ctx) {
       function setCancel(_cancel) {
         isFunction(_cancel) && (cancelInner = _cancel);
       }
-      let cancel;
       if (executor) {
-        if (!isFunction(executor)) {
-          throw new Error('Executor param must be a function');
-        }
-        try {
-          cancel = executor(_resolve, _reject);
-          executor = 0;
-          isPromise(cancel)
-            ? setCancel(cancel.then(setCancel).cancel)
-            : setCancel(cancel);
-        } catch (ex) {
-          _reject(ex);
-        }
+        const cancel = executor(_resolve, _reject);
+        executor = 0;
+        isPromise(cancel)
+          ? setCancel(cancel.then(setCancel).cancel)
+          : setCancel(cancel);
       }
       return () => {
         args || (
-          args = [new Error('Already canceled'), 1],
+          args = [new Error('Promise already canceled'), 1],
           executeTry(cancelResolve, null, null, onErrorCancel),
           executeTry(cancelInner, null, null, onErrorCancel),
           cancelResolve = cancelInner = cancelNoop

@@ -130,20 +130,20 @@ function initRootObservable(self, _init, _value) {
   self.emit = emit;
   self.getValue = getValue;
 
-  if (!isFunction(_init)) {
-    _value = _init;
-    _init = noop;
-  }
-  if (isPromise(_value)) {
-    let promise = _value;
-    _value = undefined;
-    emit(promise);
-    promise = 0;
-  }
+  isFunction(_init) || (
+    _value = _init,
+    _init = noop
+  );
+  isPromise(_value) && (
+    emit(_value),
+    _value = undefined
+  );
 
   function __emit(value) {
-    _value === value
-      || (self._cancel(), forEach(_watchers, tryWithValue(_value = value)));
+    _value === value || (
+      self._cancel(),
+      forEach(_watchers, tryWithValue(_value = value))
+    );
   }
   function emit(value) {
     self._cancel = asyncable(value, __emit);
@@ -164,14 +164,16 @@ function initRootObservable(self, _init, _value) {
 
 function Observable(_init, _value) {
   const self = this;
-  const on = _init && _init.on;
-  const getValue = _init && _init.getValue;
-  if (!(isFunction(on) && isFunction(getValue))) {
+  if (!(isObservable(_init))) {
     return initRootObservable(self, _init, _value);
   }
-  extendOwn(self, _init);
+  const {
+    on,
+    getValue,
+  } = _init;
   const _watchers = [];
   let _subscription;
+  extendOwn(self, _init);
   function onEmit(value) {
     forEach(_watchers, tryWithValue(_value = value));
   }
@@ -182,7 +184,10 @@ function Observable(_init, _value) {
   self.getValue = () => _subscription ? _value : getValue();
   self.on = (watcher) => {
     const subscription = subscribe(_watchers, watcher, onDestroy);
-    _subscription || (_subscription = on(onEmit), _value = getValue());
+    _subscription || (
+      _subscription = on(onEmit),
+      _value = getValue()
+    );
     return subscription;
   };
 }
@@ -370,8 +375,9 @@ function subscribe(watchers, watcher, onDestroy) {
   return () => {
     watcher && (
       removeOf(watchers, watcher),
-      watchers.length < 1 && onDestroy(),
-      onDestroy = watchers = watcher = 0
+      watcher = 0,
+      watchers.length || onDestroy(),
+      onDestroy = watchers = 0
     );
   };
 }
