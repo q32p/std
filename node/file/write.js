@@ -5,7 +5,7 @@ const {
 const {
   dirname,
 } = require('path');
-const find = require('../../find');
+const findEach = require('../../findEach');
 const isFunction = require('../../isFunction');
 
 
@@ -17,7 +17,7 @@ module.exports = function(outputFileName) {
   }, write) : write();
   function write(error, onFinally) {
     error ? (
-      onFinally = find(args, isFunction),
+      onFinally = findEach(args, isFunction),
       onFinally && onFinally(error)
     ) : writeFile.apply(null, args); // eslint-disable-line
   }
