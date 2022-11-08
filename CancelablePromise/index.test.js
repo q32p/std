@@ -3,6 +3,64 @@ const CancelablePromise = require('./index');
 const DEFAULT_TIMEOUT = 100;
 
 describe('CancelablePromise', () => {
+  test('rejected resolve', async () => {
+    let _subject;
+    (new CancelablePromise((resolve) => {
+      resolve(CancelablePromise.reject(new Error('Error')));
+    })).catch((subject) => {
+      _subject = subject;
+    });
+
+    await CancelablePromise.delay(1000);
+    expect(_subject).toEqual(new Error('Error'));
+  });
+
+  test('next resolved', async () => {
+    let _delayedSubject;
+    let _error;
+    let cancelablePromise = CancelablePromise.all([
+      CancelablePromise.delay(1000, 'delayed').then((subject) => {
+        return _delayedSubject = subject;
+      }),
+      CancelablePromise.delay(10).then(() => {
+        throw new Error('Error1');
+      }),
+    ]);
+    cancelablePromise = cancelablePromise.catch((error) => {
+      return _error = error;
+    });
+
+    expect(await cancelablePromise).toEqual(new Error('Error1'));
+    expect(_error).toEqual(new Error('Error1'));
+    expect(_delayedSubject).toBe(undefined);
+    await CancelablePromise.delay(1000);
+    expect(_delayedSubject).toBe('delayed');
+  });
+
+  test('next canceled', async () => {
+    let _delayedSubject;
+    let _error;
+    let cancelablePromise = CancelablePromise.all([
+      CancelablePromise.delay(1000, 'delayed').then((subject) => {
+        return _delayedSubject = subject;
+      }),
+      CancelablePromise.delay(10).then(() => {
+        throw new Error('Error');
+      }),
+    ]);
+    cancelablePromise = cancelablePromise.catch((error) => {
+      return _error = error;
+    });
+
+    cancelablePromise.cancel();
+
+    await CancelablePromise.delay(50);
+    expect(_error).toEqual(undefined);
+    expect(_delayedSubject).toBe(undefined);
+    await CancelablePromise.delay(1000);
+    expect(_delayedSubject).toBe(undefined);
+  });
+
   test('it should resolve promise', async () => {
     const cancelablePromise = new CancelablePromise((resolve) => {
       resolve(10);
@@ -79,9 +137,7 @@ describe('CancelablePromise', () => {
 
   test('it should cancel promise if canceled all child promises', async () => {
     return new Promise((topResolve, topReject) => {
-      const cancelablePromise = new CancelablePromise((resolve) => {
-        resolve('Hello!');
-      });
+      const cancelablePromise = CancelablePromise.resolve('Hello!');
       const childCancelablePromise1 = cancelablePromise.then(() => {
         topReject(new Error('child promise 1 "then" callback executed'));
       });
@@ -102,9 +158,7 @@ describe('CancelablePromise', () => {
   /* eslint-disable-next-line */
   test('it should resolve promise if canceled 2 of 3 child promises', async () => {
     return new Promise((topResolve, topReject) => {
-      const cancelablePromise = new CancelablePromise((resolve) => {
-        resolve('Hello!');
-      });
+      const cancelablePromise = CancelablePromise.resolve('Hello!');
       const childCancelablePromise1 = cancelablePromise.then(() => {
         topReject(new Error('child promise 1 "then" callback executed'));
       });
@@ -249,7 +303,8 @@ describe('CancelablePromise', () => {
   test('it should defer callback and return cancelable promise', async () => {
     const order = [];
     const cancelablePromise = CancelablePromise
-        .defer(() => {
+        .defer()
+        .then(() => {
           order.push(2);
           return 'Hello';
         })
@@ -366,31 +421,51 @@ describe('CancelablePromise', () => {
   });
 
   test('it should fail if call method "all" with string', async () => {
-    const cancelablePromise = CancelablePromise.all('3 Ooops')
-        .catch((e) => 'has error');
-    expect(await cancelablePromise).toBe('has error');
+    let hasError;
+    try {
+      CancelablePromise.all('3 Ooops');
+    } catch (e) {
+      hasError = true;
+    }
+    expect(hasError).toBe(true);
   });
 
   test('it should fail if call method "all" with number', async () => {
-    const cancelablePromise = CancelablePromise.all(33)
-        .catch((e) => 'has error');
-    expect(await cancelablePromise).toBe('has error');
+    let hasError;
+    try {
+      CancelablePromise.all(33);
+    } catch (e) {
+      hasError = true;
+    }
+    expect(hasError).toBe(true);
   });
 
   test('it should fail if call method "all" with null', async () => {
-    const cancelablePromise = CancelablePromise.all(null)
-        .catch((e) => 'has error');
-    expect(await cancelablePromise).toBe('has error');
+    let hasError;
+    try {
+      CancelablePromise.all(null);
+    } catch (e) {
+      hasError = true;
+    }
+    expect(hasError).toBe(true);
   });
 
   test('it should fail if call method "all" with boolean', async () => {
-    const cancelablePromise1 = CancelablePromise.all(true)
-        .catch((e) => 'has error if true');
-    expect(await cancelablePromise1).toBe('has error if true');
+    let hasError1;
+    try {
+      CancelablePromise.all(true);
+    } catch (e) {
+      hasError1 = true;
+    }
+    expect(hasError1).toBe(true);
 
-    const cancelablePromise2 = CancelablePromise.all(false)
-        .catch((e) => 'has error if false');
-    expect(await cancelablePromise2).toBe('has error if false');
+    let hasError2;
+    try {
+      CancelablePromise.all(false);
+    } catch (e) {
+      hasError2 = true;
+    }
+    expect(hasError2).toBe(true);
   });
 
   /* eslint-disable-next-line */
@@ -423,43 +498,6 @@ describe('CancelablePromise', () => {
   });
 
   /* eslint-disable-next-line */
-  test('it should reject promise which returned by method "all" and cancel others if rejected anyone promises in aggregation', async () => {
-    let cancelCount = 0;
-    function cancel() {
-      cancelCount++;
-    }
-    const promise = new Promise((topResolve, topReject) => {
-      CancelablePromise.all([
-        new CancelablePromise((resolve) => {
-          setTimeout(resolve, 0, 'one');
-          return cancel;
-        }),
-        CancelablePromise.reject('two3'),
-        new CancelablePromise((resolve) => {
-          setTimeout(resolve, 0, 'three');
-          return cancel;
-        }),
-        new CancelablePromise((resolve) => {
-          setTimeout(resolve, 0, 'four');
-          return cancel;
-        }),
-      ]).then(
-          () => {
-            topReject(new Error('"then" callback executed'));
-          },
-          (err) => {
-            topResolve(err);
-          },
-          () => {
-            topReject(new Error('"then" callback on cancel executed'));
-          },
-      );
-    });
-    expect(await promise).toBe('two3');
-    expect(cancelCount).toBe(3);
-  });
-
-  /* eslint-disable-next-line */
   test('it should resolve first value when call "race" with array of the promises', async () => {
     const cancelablePromise = CancelablePromise.race([
       CancelablePromise.delay(200, 'one'),
@@ -480,42 +518,13 @@ describe('CancelablePromise', () => {
     expect(await cancelablePromise).toBe('Vasya');
   });
 
-  /* eslint-disable-next-line */
-  test('"race" if resolved 1 of 4 promises in race then other are cancel', async () => {
-    let cancelCount = 0;
-    function cancel() {
-      cancelCount++;
-    }
-    const cancelablePromise = CancelablePromise.race([
-      new CancelablePromise((resolve) => {
-        setTimeout(resolve, 100, 'one');
-        return cancel;
-      }),
-      new CancelablePromise((resolve) => {
-        setTimeout(resolve, 100, 'two');
-        return cancel;
-      }),
-      new CancelablePromise((resolve) => {
-        setTimeout(resolve, 0, 'three');
-        return cancel;
-      }),
-      new CancelablePromise((resolve) => {
-        setTimeout(resolve, 100, 'four');
-        return cancel;
-      }),
-    ]);
-
-    expect(await cancelablePromise).toBe('three');
-    expect(cancelCount).toBe(3);
-  });
-
   test('"race" if reject all promises in race', async () => {
     const promise = new Promise((topResolve, topReject) => {
       CancelablePromise.race([
-        CancelablePromise.reject('one'),
-        CancelablePromise.reject('two2'),
-        CancelablePromise.reject('three'),
-        CancelablePromise.reject('four'),
+        CancelablePromise.delay(500, 'one', true),
+        CancelablePromise.delay(50, 'two2', true),
+        CancelablePromise.delay(100, 'three', true),
+        CancelablePromise.delay(250, 'four', true),
       ]).then(
           () => {
             topReject(new Error('"then" callback executed'));
@@ -526,6 +535,6 @@ describe('CancelablePromise', () => {
           },
       );
     });
-    expect(await promise).toEqual(['one', 'two2', 'three', 'four']);
+    expect(await promise).toEqual('two2');
   });
 });

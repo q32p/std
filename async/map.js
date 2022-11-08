@@ -1,49 +1,22 @@
-const resolve = require('../CancelablePromise').resolve;
-const getKeys = require('../keys');
+const {
+  resolve: cancelablePromiseResolve,
+} = require('../CancelablePromise');
+const entries = require('../entries');
+const fromPairs = require('../../fromPairs');
 const isArray = require('../isArray');
 const isFunction = require('../isFunction');
 const noopHandle = require('../noopHandle');
 const getterProvider = require('../get').getter;
-const loopAsync = require('./loop');
+const mapEach = require('./mapEach');
 
 
-function mapArray(items, iteratee, output) {
-  const length = items.length || 0;
-  let index = 0;
-  output || (output = new Array(length));
-  return loopAsync(() => index < length, () => {
-    const i = index;
-    index++;
-    return resolve(iteratee(items[i], i)).then((item) => {
-      output[i] = item;
-    });
-  }).then(() => output);
-}
-
-function mapObj(collection, iteratee, output) {
-  const keys = getKeys(collection);
-  const length = keys.length;
-  let index = 0;
-  output || (output = {});
-  return loopAsync(() => index < length, () => {
-    const key = keys[index];
-    index++;
-    return resolve(iteratee(collection[key], key)).then((item) => {
-      output[key] = item;
-    });
-  }).then(() => output);
-}
-
-module.exports = (collection, iteratee, output) => {
+module.exports = (collection, iteratee, output, ctx) => {
   return collection ? (
+    isFunction(iteratee) || (iteratee = getterProvider(iteratee) || noopHandle),
     isArray(output) || isArray(collection)
-      ? mapArray
-      : mapObj
-  )(
-      collection,
-      isFunction(iteratee)
-        ? iteratee
-        : (getterProvider(iteratee) || noopHandle),
-      output,
-  ) : resolve(output || {});
+      ? mapEach(collection, iteratee, output || [], ctx)
+      : mapEach(entries(collection), (line) => {
+        return iteratee.call(ctx, line[1], line[0], collection);
+      }, [], ctx).then((_entries) => fromPairs(_entries, output))
+  ) : cancelablePromiseResolve(output || []);
 };

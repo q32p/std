@@ -1,16 +1,22 @@
 const isPromise = require('./isPromise');
 const isFunction = require('./isFunction');
 
-module.exports = (fn) => {
+module.exports = (fn, ctx) => {
   let _cancel;
   function instance() {
     cancel();
-    return _cancel = fn.apply(this, arguments); // eslint-disable-line
+    return _cancel = fn.apply(ctx, arguments); // eslint-disable-line
   }
   function cancel() {
-    return isFunction(_cancel)
-      ? _cancel()
-      : isPromise(_cancel) && isFunction(_cancel.cancel) && _cancel.cancel();
+    const __cancel = _cancel;
+    _cancel = 0;
+    __cancel && (
+      isFunction(__cancel)
+        ? __cancel()
+        : isPromise(__cancel)
+          && isFunction(__cancel.cancel)
+          && __cancel.cancel()
+    );
   }
   instance.cancel = cancel;
   return instance;

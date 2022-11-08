@@ -17,6 +17,7 @@ const {
   all: cancelablePromiseAll,
 } = CancelablePromise;
 
+
 function decodeObservable(input$) {
   return new Observable((emit) => {
     return input$.on(emit).cancel;
@@ -77,7 +78,6 @@ module.exports = (input, getFn) => {
         promises.push(dst.getValue().then(emitter$.emit));
         return emitter$.map();
       }
-
       return dst;
     }
     const output = unpack(input[0]);

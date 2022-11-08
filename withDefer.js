@@ -1,14 +1,14 @@
 const defer = require('./defer');
-module.exports = (fn, result) => {
-	let hasDebounce, args, self; // eslint-disable-line
+
+module.exports = (fn, ctx, result) => {
+	let _hasDebounce, _args; // eslint-disable-line
   function exec() {
-    hasDebounce = 0;
-    result = fn.apply(self, args);
+    _hasDebounce = 0;
+    fn.apply(ctx, _args);
   }
   return function() {
-    self = this;
-    args = arguments; // eslint-disable-line
-    hasDebounce || (hasDebounce = 1, defer(exec));
+    _args = arguments; // eslint-disable-line
+    _hasDebounce || (_hasDebounce = 1, defer(exec));
     return result;
   };
 };

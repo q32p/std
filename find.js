@@ -5,18 +5,11 @@
 
 const iterateeNormalize = require('./iterateeNormalize');
 const isArray = require('./isArray');
+const findIn = require('./findIn');
+const findEach = require('./findEach');
 
-module.exports = (collection, iteratee, hasArray) => {
-  if (!collection) return;
-  iteratee = iterateeNormalize(iteratee);
-  let v, k = 0, l; // eslint-disable-line
-  if (hasArray || isArray(collection)) {
-    for (l = collection.length || 0; k < l; k++) {
-      if (iteratee(v = collection[k], k)) return v;
-    }
-  } else {
-    for (k in collection) {
-      if (iteratee(v = collection[k], k)) return v;
-    }
-  }
+
+module.exports = (collection, iteratee, ctx, hasArray) => {
+  return collection && (hasArray || isArray(collection) ? findEach : findIn)(
+      collection, iterateeNormalize(iteratee), ctx);
 };

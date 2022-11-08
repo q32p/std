@@ -3,6 +3,7 @@ const some = require('../some');
 const extend = require('../extend');
 const extendOwn = require('../extendOwn');
 const reduce = require('../reduce');
+const slice = require('../slice');
 const isCollection = require('../isCollection');
 const isObjectLike = require('../isObjectLike');
 const isPromise = require('../isPromise');
@@ -207,7 +208,7 @@ Observable.wrap = (attachEvent) => {
     throw new Error('The argument can only be a function');
   }
   return function() {
-    const self = this, args = [].slice.call(arguments); // eslint-disable-line
+    const self = this, args = slice(arguments); // eslint-disable-line
     return new Observable((emit) => {
       args.push(emit);
       // eslint-disable-next-line
@@ -341,8 +342,8 @@ Observable.prototype = {
 
 function mapWithOptionsProvider(wrapper) {
   return function() {
-    const self = this;
     const __args = arguments; // eslint-disable-line
+    const self = this;
     const {
       on,
       getValue,

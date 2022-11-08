@@ -1,7 +1,10 @@
-module.exports = (fn) => {
-  let result;
+module.exports = function() {
+  let _self = arguments; // eslint-disable-line
   return function() {
-    fn && (result = fn.apply(this, arguments), fn = 0); // eslint-disable-line
-    return result;
+    if (_self) {
+      const self = _self;
+      _self = 0;
+      return self[0].apply(self[1], self[2] || arguments); // eslint-disable-line
+    }
   };
 };

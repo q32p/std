@@ -1,14 +1,14 @@
-const delay = require('./delay');
-module.exports = (fn, _delay, result) => {
-	let hasDebounce, args, self; // eslint-disable-line
+const delayFn = require('./delay');
+
+module.exports = (fn, delay, ctx, result) => {
+	let _hasDebounce, _args; // eslint-disable-line
   function exec() {
-    hasDebounce = 0;
-    result = fn.apply(self, args);
+    _hasDebounce = 0;
+    fn.apply(ctx, _args);
   }
   return function() {
-    self = this;
-    args = arguments; // eslint-disable-line
-    hasDebounce || (hasDebounce = 1, delay(exec, _delay));
+    _args = arguments; // eslint-disable-line
+    _hasDebounce || (_hasDebounce = 1, delayFn(exec, delay));
     return result;
   };
 };

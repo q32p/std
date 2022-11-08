@@ -1,14 +1,15 @@
-const __delay = require('./delay');
+const delayFn = require('./delay');
 
 module.exports = (fn, delay) => {
-  let hasDebounce, result; // eslint-disable-line
+  let _called;
   function free() {
-    hasDebounce = 0;
+    _called = 0;
   }
   return function() {
-    if (hasDebounce) return result;
-    hasDebounce = 1;
-    __delay(free, delay);
-    return result = fn.apply(this, arguments); // eslint-disable-line
+    return _called || (
+      _called = 1,
+      delayFn(free, delay),
+      fn.apply(this, arguments) // eslint-disable-line
+    );
   };
 };

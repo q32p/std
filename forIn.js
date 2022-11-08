@@ -1,4 +1,4 @@
-module.exports = (obj, iteratee, k) => {
-  for (k in obj) iteratee(obj[k], k); // eslint-disable-line
-  return obj;
+module.exports = (obj, iteratee, ctx) => {
+  let k;
+  for (k in obj) iteratee.call(ctx, obj[k], k, obj); // eslint-disable-line
 };

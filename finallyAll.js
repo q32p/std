@@ -1,9 +1,10 @@
+const noop = require('./noop');
 
 module.exports = (fn, callback) => {
-  let count = 0;
+  let _count = 0;
   fn(() => {
-    count++;
+    _count++;
   }, callback ? () => {
-    --count || callback();
-  } : () => {});
+    --_count || callback();
+  } : noop);
 };

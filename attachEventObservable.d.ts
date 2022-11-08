@@ -19,5 +19,5 @@
  * });
  * ```
  */
- declare function attachEventEmitable(node: EventTarget, eventName: string, options?: any): Observable<Event>;
- export = attachEventEmitable;
+ declare function attachEventObservable(node: EventTarget, eventName: string, options?: any): Observable<Event>;
+ export = attachEventObservable;

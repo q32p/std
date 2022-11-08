@@ -87,9 +87,8 @@ module.exports = (options) => {
   };
   handlers[RPC_MSG_CANCEL] = (taskId) => {
     const promise = promises[taskId];
-    const cancel = promise && promise.cancel;
     delete promises[taskId];
-    cancel && cancel();
+    promise.cancel();
   };
   function start() {
     let prev;

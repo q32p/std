@@ -54,6 +54,7 @@ const request = module.exports = (method, url, options) => {
   const opts = {
     method,
     headers,
+    timeout: 20000,
   };
   const exec = (options.protocol === 'https' ? https : http).request;
 
@@ -63,12 +64,20 @@ const request = module.exports = (method, url, options) => {
 
   function base() {
     return (new CancelablePromise((resolve, reject) => {
-      const req = exec(url, opts, resolve).on('error', reject);
+      function cancel() {
+        req && (
+          request.destroy(),
+          req = 0
+        );
+      }
+      const req = exec(url, opts, resolve)
+          .on('error', (err) => {
+            cancel();
+            reject(err);
+          });
       body && req.write(body);
       req.end();
-      return () => {
-        req.abort();
-      };
+      return cancel;
     })).then(onResponse);
   }
   function onResponse(response) {

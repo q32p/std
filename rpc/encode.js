@@ -4,10 +4,11 @@ const extendOwn = require('../extendOwn');
 const setBase = require('../set').base;
 const isArray = require('../isArray');
 const isObservable = require('../isObservable');
+const isPromise = require('../isPromise');
 const isDate = require('../isDate');
 const isRegExp = require('../isRegExp');
 const indexOf = require('../indexOf');
-
+const bindMethods = require('../bindMethods');
 const {
   RPC_TYPE_FUNCTION,
   RPC_TYPE_OBJECT,
@@ -16,7 +17,18 @@ const {
   RPC_TYPE_REGEXP,
 } = require('./constants');
 
+const {
+  resolve: cancelablePromiseResolve,
+} = CancelablePromise;
+
 const REGEXP_NUMBER = /^\d+$/i;
+const PROMISE_METHODS = [
+  'then',
+  'catch',
+  'onCancel',
+  'finally',
+];
+
 
 function adaptObservable(input$) {
   const {
@@ -63,7 +75,7 @@ module.exports = (src, fns, rootId, compress) => {
     if (isRegExp(src)) {
       return [RPC_TYPE_REGEXP, src.toString()];
     }
-    let index, i, k, dst, length; // eslint-disable-line
+    let index, i, k, dst, length, hasPromise; // eslint-disable-line
     if (isArray(src)) {
       index = indexOf(arrays, src);
       if (index === -1) {
@@ -81,6 +93,10 @@ module.exports = (src, fns, rootId, compress) => {
       index = objectLastIndex++;
       objects[index] = src;
       isObservable(src) && (src = adaptObservable(src));
+      isPromise(src) && (src = bindMethods(
+          cancelablePromiseResolve(src),
+          PROMISE_METHODS,
+      ));
       dst = convertedObjects[index] = {};
       for (k in src) { // eslint-disable-line
         if (hasOwn(src, k)) {
