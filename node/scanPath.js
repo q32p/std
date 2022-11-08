@@ -1,5 +1,5 @@
-const noop = require('../../noop');
-const extend = require('../../extend');
+const noop = require('../noop');
+const extend = require('../extend');
 const each = require('./searchFiles/each');
 
 
