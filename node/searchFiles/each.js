@@ -7,7 +7,7 @@ function defaultFilter() {
   return true;
 }
 
-module.exports = (folderPath, iteratee) => {
+module.exports = (folderPath, options) => {
   return new CancelablePromise((resolve, reject) => {
     options || (options = {});
     const filter = options.filter || defaultFilter;
