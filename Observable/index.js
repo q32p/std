@@ -330,14 +330,16 @@ Observable.prototype = {
   delay: mapWithOptionsProvider(require('../withDelay')),
   throttle: mapWithOptionsProvider(require('../throttle')),
 
-  bind() {
+  bind(value) {
     // eslint-disable-next-line
-    return bind(this.emit, this, arguments);
+    return bind(this.emit, this, [value]);
   },
+  /*
   bindFn(fnName) {
     // eslint-disable-next-line
     return bind(this[fnName], this, slice(arguments, 1));
   },
+  */
 };
 
 function mapWithOptionsProvider(wrapper) {
