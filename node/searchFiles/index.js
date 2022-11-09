@@ -6,5 +6,5 @@ module.exports = (folderPath, options) => {
   const output = [];
   return each(folderPath, extend(extend({}, options), {
     iteratee: output.push.bind(output),
-  })).join(() => output);
+  })).then(() => output);
 };
