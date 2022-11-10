@@ -15,12 +15,12 @@ module.exports = (folderPath, options) => {
     let _stop = false;
     let _taskCount = 0;
 
-    base(folderPath, pathLib.basename(folderPath));
+    base(folderPath, pathLib.basename(folderPath), 0);
 
     function dec() {
       --_taskCount || resolve();
     }
-    function base(path, name) {
+    function base(path, name, depth) {
       _taskCount++;
       fs.lstat(path, (err, stats) => {
         if (_stop) {
@@ -30,7 +30,7 @@ module.exports = (folderPath, options) => {
           return dec();
         }
         const isDir = stats.isDirectory();
-        if (!filter(name, isDir)) {
+        if (!filter(name, isDir, depth)) {
           return dec();
         }
         if (!isDir) {
@@ -44,12 +44,13 @@ module.exports = (folderPath, options) => {
           if (err) {
             return dec();
           }
+          const nextDepth = depth + 1;
           const length = files.length;
           let i = 0;
           let name;
           for (; i < length; i++) {
             name = files[i];
-            base(pathLib.join(path, name), name);
+            base(pathLib.join(path, name), name, nextDepth);
           }
           dec();
         });
