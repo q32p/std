@@ -274,11 +274,12 @@ Observable.prototype = {
       getValue: getValueOut,
       on: mapOut ? ((watcher) => {
         function update(value) {
-          _value === value || watcher(_value = value);
+          _value === value || (
+            _value = value,
+            watcher && watcher(_value)
+          );
         }
-        let cancelOut = asyncable(mapOut(getValue()), (value) => {
-          _value = value;
-        });
+        let cancelOut = asyncable(mapOut(getValue()), update);
         _subscripion = on((value) => {
           cancelOut();
           cancelOut = asyncable(mapOut(value), update);

@@ -1,14 +1,11 @@
 const delay = require('./delay');
-
+const cancelProvider = require('./cancelProvider');
 
 module.exports = (fn, args, ctx) => {
   try {
-    const immediateId = setImmediate(() => {
+    return cancelProvider(clearImmediate, setImmediate(() => {
       fn.apply(ctx || null, args || []);
-    });
-    return () => {
-      clearImmediate(immediateId);
-    };
+    }));
   } catch (ex) {
     return delay(fn, 0, args, ctx);
   }
