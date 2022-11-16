@@ -114,13 +114,14 @@ module.exports = function(ctx) {
     let _pool = [];
     let _args;
 
-    const init = subscribleInit(() => {
+    const init = subscribleInit((clear) => {
       function onResolve(subject, rejected, canceled, pool) {
         _args || (
           _args = [subject, rejected],
           pool = _pool,
+          clear(),
           _pool = cancelResolve = cancelExecute = clearResolve
-            = resolve = reject = fns = 0,
+            = resolve = reject = fns = clear = 0,
           canceled || (
             rejected && (self._hasErrorHandle || pool.length
               || console.error('Unhandled promise rejection:', subject)),
@@ -149,9 +150,11 @@ module.exports = function(ctx) {
         : noop;
       executor = 0;
       return () => {
-        clearResolve();
-        cancelExecute();
-        cancelResolve();
+        clearResolve && (
+          clearResolve(),
+          cancelExecute(),
+          cancelResolve()
+        );
         onResolve(null, new Error('Promise already canceled'), 1);
       };
     });
@@ -296,7 +299,9 @@ function iterateeValue(line) {
 }
 function subscribleInit(cancel) {
   let count = -1;
-  cancel = cancel();
+  cancel = cancel(() => {
+    cancel = 0;
+  });
   function cancelFn() {
     cancel && --count < 1 && (cancel(), cancel = 0);
   }

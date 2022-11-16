@@ -1,13 +1,24 @@
+const CancelablePromise = require('../CancelablePromise');
 const {
   resolve: cancelablePromiseResolve,
-} = require('../CancelablePromise');
+} = CancelablePromise;
 
 module.exports = (checkFn, statementFn) => {
-  function next() {
-    if (checkFn()) {
-      return cancelablePromiseResolve(statementFn())
-          .then(next);
+  let _cancel;
+  return new CancelablePromise((resolve, reject) => {
+    function next() {
+      try {
+        checkFn()
+          ? (_cancel = cancelablePromiseResolve(statementFn())
+              .then(next, reject).cancel)
+          : resolve();
+      } catch (ex) {
+        reject(ex);
+      }
     }
-  }
-  return cancelablePromiseResolve().then(next);
+    next();
+    return () => {
+      _cancel && _cancel();
+    };
+  });
 };

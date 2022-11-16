@@ -1,9 +1,9 @@
 const loopMap = require('../../loopMap');
 const isLength = require('../../isLength');
 const {
-  resolve: cancelablePromiseResolve,
   all: cancelablePromiseAll,
 } = require('../../CancelablePromise');
+const loopAsync = require('../loop');
 
 
 module.exports = (checkFn, statementFn, taskLimit) => {
@@ -11,14 +11,10 @@ module.exports = (checkFn, statementFn, taskLimit) => {
     throw new Error('The taskLimit must be a number');
   }
   let _executing = 1;
-  return cancelablePromiseAll(loopMap(taskLimit, () => {
-    return cancelablePromiseResolve().then(next);
-  }));
-  function next() {
-    if (_executing && checkFn()) {
-      return cancelablePromiseResolve(statementFn())
-          .then(next);
-    }
-    _executing = 0;
+  function _checkFn() {
+    return _executing && (_executing = checkFn());
   }
+  return cancelablePromiseAll(loopMap(taskLimit, () => {
+    return loopAsync(_checkFn, statementFn);
+  }));
 };

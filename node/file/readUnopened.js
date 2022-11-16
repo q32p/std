@@ -59,9 +59,9 @@ const readableStream = readUnopened('./input.jsonl', {
 });
 */
 function readUnopened(path, options) {
-  return new ReadUnopened(extend({
+  return new ReadUnopened(extend(extend({}, options), {
     path: path,
-  }, options));
+  }));
 }
 
 readUnopened.ReadUnopened = ReadUnopened;
