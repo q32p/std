@@ -7,7 +7,7 @@ module.exports = (fn, delay, ctx) => {
     _calledNext
       ? (
         _calledNext = 0,
-        delay(exec, delay),
+        delayFn(exec, delay),
         fn.apply(ctx, _args)
       )
       : (_called = 0);
