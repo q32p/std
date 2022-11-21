@@ -1,9 +1,9 @@
-const root = require('./_global');
-const get = require('./get');
-const isArray = require('./isArray');
-const forEach = require('./forEach');
-const map = require('./map');
-const loopMap = require('./loopMap');
+const root = require('../_global');
+const get = require('../get');
+const isArray = require('../isArray');
+const forEach = require('../forEach');
+const map = require('../map');
+const loopMap = require('../loopMap');
 
 const INPUT_ERROR = 'input is invalid type';
 const FINALIZE_ERROR = 'finalize already called';
@@ -76,7 +76,11 @@ function createOutputMethod(outputType, bits) {
 function createMethod(bits) {
   const method = createOutputMethod('hex', bits);
   method.create = () => new Sha512(bits);
-  method.update = (message) => method.create().update(message);
+  method.update = (message) => {
+    return method
+        .create()
+        .update(message);
+  };
   forEach(OUTPUT_TYPES, (type) => {
     method[type] = createOutputMethod(type, bits);
   });
@@ -85,7 +89,8 @@ function createMethod(bits) {
 
 function createHmacOutputMethod(outputType, bits) {
   return (key, message) => {
-    return new HmacSha512(key, bits, true).update(message)[outputType]();
+    return new HmacSha512(key, bits, true)
+        .update(message)[outputType]();
   };
 }
 
@@ -200,10 +205,6 @@ sha512Prototype.update = function(message) {
 
     if (_prepare[1]) {
       for (i = start; index < length && i < 128; ++index) {
-        blocks[i >> 2] |= message[index] << SHIFT[i++ & 3];
-      }
-    } else {
-      for (i = start; index < length && i < 128; ++index) {
         code = message.charCodeAt(index);
         if (code < 0x80) {
           blocks[i >> 2] |= code << SHIFT[i++ & 3];
@@ -222,6 +223,10 @@ sha512Prototype.update = function(message) {
           blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3f)) << SHIFT[i++ & 3];
           blocks[i >> 2] |= (0x80 | (code & 0x3f)) << SHIFT[i++ & 3];
         }
+      }
+    } else {
+      for (i = start; index < length && i < 128; ++index) {
+        blocks[i >> 2] |= message[index] << SHIFT[i++ & 3];
       }
     }
 
@@ -243,8 +248,8 @@ sha512Prototype.update = function(message) {
   self.bytes = bytes;
   return self;
 };
-
-sha512Prototype.finalize = function() {
+sha512Prototype.finalize = sha512finalize;
+function sha512finalize() {
   const self = this;
   if (self.finalized) {
     return;
@@ -811,7 +816,7 @@ sha512Prototype.copyTo = function(hash) {
 function prepareKey(key) {
   const type = typeof key;
   if (type === 'string') {
-    return [key, false];
+    return [key, true];
   }
   if (type === 'object') {
     if (key === null) {
@@ -826,7 +831,7 @@ function prepareKey(key) {
   } else {
     throw new Error(INPUT_ERROR);
   }
-  return [key, true];
+  return [key, false];
 }
 
 function HmacSha512(key, bits) {
@@ -834,7 +839,7 @@ function HmacSha512(key, bits) {
   const _prepare = prepareKey(key);
   key = _prepare[0];
 
-  if (!_prepare[1]) {
+  if (_prepare[1]) {
     // eslint-disable-next-line
     let length = key.length, bytes = [], index = 0, code, i = 0;
     for (; i < length; ++i) {
@@ -883,14 +888,14 @@ const hmacsha512Prototype = HmacSha512.prototype = new Sha512();
 
 hmacsha512Prototype.finalize = function() {
   const self = this;
-  sha512Prototype.finalize.call(self);
+  sha512finalize.call(self);
   if (self.inner) {
     self.inner = false;
     const innerHash = self.array();
     Sha512.call(self, self.bits);
     self.update(self.oKeyPad);
     self.update(innerHash);
-    sha512Prototype.finalize.call(self);
+    sha512finalize.call(self);
   }
 };
 
