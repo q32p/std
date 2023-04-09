@@ -2,7 +2,7 @@ const {
   resolve: cancelablePromiseResolve,
 } = require('../CancelablePromise');
 const entries = require('../entries');
-const fromPairs = require('../../fromPairs');
+const fromPairs = require('../fromPairs');
 const isArray = require('../isArray');
 const isFunction = require('../isFunction');
 const noopHandle = require('../noopHandle');

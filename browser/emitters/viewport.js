@@ -1,5 +1,5 @@
 const getViewportSize = require('../getViewportSize');
 
 
-module.exports = require('../../attachEventEmitable')(window, 'resize')
+module.exports = require('../../attachEventObservable')(window, 'resize')
     .map(getViewportSize, 0, getViewportSize());
